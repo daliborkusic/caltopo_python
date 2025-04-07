@@ -796,6 +796,7 @@ class CaltopoSession():
                         'id':bp['mapId'],
                         'title':bp['title'],
                         'updated':bp['mapUpdated'],
+                        'folderId':bp.get('folderId'),
                         'type':'bookmark',
                         'permission':permission,
 						'folderId':folderId,
