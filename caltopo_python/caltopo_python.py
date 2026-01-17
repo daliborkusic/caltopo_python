@@ -3,10 +3,7 @@
 #  caltopo_python.py - python interfaces to the caltopo API
 #
 #   developed for Nevada County Sheriff's Search and Rescue
-#    Copyright (c) 2024 Tom Grundy
-#
-#   Caltopo currently does not have a publicly available API;
-#    this code calls the non-publicized API that could change at any time.
+#    Copyright (c) 2026 Tom Grundy
 #
 #   This module is intended to provide a simple, API-version-agnostic caltopo
 #    interface to other applications.
@@ -14,44 +11,11 @@
 #   This python code is in no way supported or maintained by caltopo LLC
 #    or the authors of caltopo.com.
 #
-#   Earlier versions are still available as 'sartopo_python'.
-#
 #  www.github.com/ncssar/caltopo_python
+#  caltopo-python.readthedocs.io/en/latest/index.html
 #
 #  Contact the author at nccaves@yahoo.com
 #   Attribution, feedback, bug reports and feature requests are appreciated
-#
-############################################################
-#
-# EXAMPLES:
-#
-#     from caltopo_python import CaltopoSession
-#     import time
-#     
-#     cts=CaltopoSession('localhost:8080','<offlineMapID>')
-#     fid=cts.addFolder('MyFolder')
-#     cts.addMarker(39,-120,'stuff')
-#     cts.addMarker(39.01,-120.01,'myStuff',folderId=fid)
-#     r=cts.getFeatures('Marker')
-#     print('r:'+str(r))
-#     print('moving the marker after a pause:'+r[0]['id'])
-#     time.sleep(5)
-#     cts.addMarker(39.02,-120.02,r[0]['properties']['title'],existingId=r[0]['id'])
-#     
-#     cts2=CaltopoSession(
-#         'caltopo.com',
-#         '<onlineMapID>',
-#         configpath='../../cts.ini',
-#         account='<accountName>')
-#     fid2=cts2.addFolder('MyOnlineFolder')
-#     cts2.addMarker(39,-120,'onlineStuff')
-#     cts2.addMarker(39.01,-119.99,'onlineStuff2',folderId=fid2)
-#     r2=cts2.getFeatures('Marker')
-#     print('return value from getFeatures('Marker'):')
-#     print(json.dumps(r2,indent=3))
-#     time.sleep(15)
-#     print('moving online after a pause:'+r2[0]['id'])
-#     cts2.addMarker(39.02,-119.98,r2[0]['properties']['title'],existingId=r2[0]['id'])
 #
 #
 #  Threading
@@ -101,6 +65,8 @@
 #   2 - requestQueue - as described in the threading comments above; the actual
 #      http request is held in this queue until the requestThread worker determines
 #      that it's time to send (using requestEvent, holdRequests, etc.)
+#
+#  See the 'Non-blocking requests' readthedocs page for more information.
 # 
 
 import hmac
@@ -126,8 +92,6 @@ import re
 # import psutil
 
 # process=psutil.Process(os.getpid())
-
-# syncing=False
 
 # shapely.geometry imports will generate a logging message if numpy is not installed;
 #  numpy is not actually required
@@ -272,7 +236,6 @@ class CaltopoSession():
         self.caseSensitiveComparisons=caseSensitiveComparisons
         self.validatePoints=validatePoints
         self.accountData=None
-        # self.holdRequests=False
         self.disconnectedFlag=False # used to make sure disconnectCallback is only fired once, until reconnected
         self.latestResponseCode=0
         self.badResponse=None
@@ -1243,36 +1206,7 @@ class CaltopoSession():
                                 #     self.deletedFeatureCallback(id,c)
                                 self._doCallback(self.deletedFeatureCallback,id,c)
                     if deletedAnythingFlag:
-                        logging.info('deleted items have been removed from cache:\n'+json.dumps(deletedDict,indent=3))
-                
-
-                # l1=len(self.mapData['state']['features'])
-                # logging.info('before:'+str(l1)+':'+str(self.mapData['state']['features']))
-                # self.mapData['state']['features'][:]=(f for f in self.mapData['state']['features'] if f['id'] in self.mapIDs)
-                # mapSFIDs=[f['id'] for f in self.mapData['state']['features']]
-                # l2=len(self.mapData['state']['features'])
-                # logging.info('after:'+str(l1)+':'+str(self.mapData['state']['features']))
-                # if l2!=l1:
-                #     deletedIds=list(set(mapSFIDsBefore)-set(mapSFIDs))
-                #     logging.info('cleaned up '+str(l1-l2)+' feature(s) from the cache:'+str(deletedIds))
-                #     if self.deletedFeatureCallback:
-                #         for did in deletedIds:
-                #             self.deletedFeatureCallback(did)
-                    # logging.info(beforeStr)
-                    # logging.info('mapData after cleanup:'+json.dumps(self.mapData,indent=3))
-
-                # logging.info('mapData:\n'+json.dumps(self.mapData,indent=3))
-                # logging.info('\n'+self.mapID+':\n  mapIDs:'+str(self.mapIDs)+'\nmapSFIDs:'+str(mapSFIDs))
-
-                # bug: i is defined as an index into mapSFIDs but is used as an index into self.mapData['state']['features']:
-                # # for i in range(len(mapSFIDs)):
-                # #     if mapSFIDs[i] not in self.mapIDs:
-                # #         prop=self.mapData['state']['features'][i]['properties']
-                # #         logging.info('  Deleting '+mapSFIDs[i]+':'+str(prop['class'])+':'+str(prop['title']))
-                # #         if self.deletedFeatureCallback:
-                # #             self.deletedFeatureCallback(self.mapData['state']['features'][i])
-                # #         del self.mapData['state']['features'][i]
-                
+                        logging.info('deleted items have been removed from cache:\n'+json.dumps(deletedDict,indent=3))                
 
                 if self.cacheDumpFile:
                     with open(insertBeforeExt(self.cacheDumpFile,'.cache'+str(max(0,self.lastSuccessfulSyncTimestamp))),"w") as f:
@@ -1765,28 +1699,6 @@ class CaltopoSession():
             else:
                 paramsPrint=params
 
-        # if type=="POST":
-            # payload_string = json.dumps(j) if j else ""
-            # if internet:
-            #     expires=int(time.time()*1000)+120000 # 2 minutes from current time, in milliseconds
-            #     data="POST "+mid+apiUrlEnd+"\n"+str(expires)+"\n"+json.dumps(j)
-            #     params["id"]=self.id
-            #     params["expires"]=expires
-            #     params["signature"]=self._getToken(data)
-            #     # params["signature"]=self.sign(type,url,expires,payload_string,self.key)
-            # params["json"]=payload_string
-            # if internet:
-            #     paramsPrint=copy.deepcopy(params)
-            #     paramsPrint['id']='.....'
-            #     paramsPrint['signature']='.....'
-            # else:
-                paramsPrint=params
-            # logging.info(f'SENDING {method.upper()} to {url}:')
-            # logging.info(json.dumps(paramsPrint,indent=3))
-            # don't print the entire PDF generation request - upstream code can print a PDF data summary
-            # if 'PDFLink' not in url:
-            #     logging.info(jsonForLog(paramsPrint))
-            # send the dict in the request body for POST requests, using the 'data' arg instead of 'params'
             urlEnd=url.split('/')[-1]
             try:
                 rest=callbacks[1][1][0]['deviceStr']+' '+j['properties']['title']
@@ -1836,90 +1748,6 @@ class CaltopoSession():
                 logging.info('POST: setting requestEvent')
                 self.requestEvent.set()
                 return True # successfully submitted to the queue
-        # elif type=="GET": # no need for json in GET; sending null JSON causes downstream error
-        #     # logging.info("SENDING GET to '"+url+"':")
-        #     if internet:
-        #         expires=int(time.time()*1000)+120000 # 2 minutes from current time, in milliseconds
-        #         data="GET "+mid+apiUrlEnd+"\n"+str(expires)+"\n"  #last newline needed as placeholder for json
-        #         params["json"]=''   # no body, but is required
-        #         params["id"]=self.id
-        #         params["expires"]=expires
-        #         params["signature"]=self._getToken(data)
-        #     if internet:
-        #         paramsPrint=copy.deepcopy(params)
-        #         paramsPrint['id']='.....'
-        #         paramsPrint['signature']='.....'
-        #     else:
-        #         paramsPrint=params
-        #         # 'data' argument sends dict in body; 'params' sends dict in URL query string,
-        #         #   which is needed by signed GET requests such as api/v1/acct/....../since/0
-        #         #   and for all requests to maps with 'secret' permission; so, might as well just
-        #         #   sign all GET requests to the internet, rather than try to determine permission
-        #     if blocking:
-        #         self.syncPause=True
-        #         r=self.s.get(url,params=params,timeout=timeout,proxies=self.proxyDict,allow_redirects=False)
-        #     else:
-        #         requestQueueEntry={
-        #             'method':'GET',
-        #             'url':url,
-        #             'params':params,
-        #             'timeout':timeout,
-        #             'proxies':self.proxyDict,
-        #             'allow_redirects':False,
-        #             'callbacks':callbacks
-        #         }
-        #         logging.info('----- QUEUE (put) ----- ')
-        #         logging.info(json.dumps(requestQueueEntry,indent=3,cls=CustomEncoder)) # CustomEncoder due to callables
-        #         self.requestQueue.put(requestQueueEntry)
-        #         if self.requestQueueChangedCallback:
-        #             self.requestQueueChangedCallback(self.requestQueue)
-        #         logging.info('GET: setting requestEvent')
-        #         self.requestEvent.set()
-        #         return True # successfully submitted to the queue
-        #     # logging.info("SENDING GET to '"+url+"'")
-        #     # logging.info(json.dumps(paramsPrint,indent=3))
-        #     # logging.info('Prepared request URL:')
-        #     # logging.info(r.request.url)
-        # elif type=="DELETE":
-        #     if internet:
-        #         expires=int(time.time()*1000)+120000 # 2 minutes from current time, in milliseconds
-        #         data="DELETE "+mid+apiUrlEnd+"\n"+str(expires)+"\n"  #last newline needed as placeholder for json
-        #         params["json"]=''   # no body, but is required
-        #         params["id"]=self.id
-        #         params["expires"]=expires
-        #         params["signature"]=self._getToken(data)
-        #     if internet:
-        #         paramsPrint=copy.deepcopy(params)
-        #         paramsPrint['id']='.....'
-        #         paramsPrint['signature']='.....'
-        #     else:
-        #         paramsPrint=params
-        #     # logging.info("SENDING DELETE to '"+url+"'")
-        #     # logging.info(json.dumps(paramsPrint,indent=3))
-        #     # logging.info("Key:"+str(self.key))
-        #     if blocking:
-        #         self.syncPause=True
-        #         r=self.s.delete(url,params=params,timeout=timeout,proxies=self.proxyDict)   ## use params for query vs data for body data
-        #     else:
-        #         requestQueueEntry={
-        #             'method':'DELETE',
-        #             'url':url,
-        #             'params':params,
-        #             'timeout':timeout,
-        #             'proxies':self.proxyDict,
-        #             'allow_redirects':False,
-        #             'callbacks':callbacks
-        #         }
-        #         logging.info('----- QUEUE (put) ----- ')
-        #         logging.info(json.dumps(requestQueueEntry,indent=3,cls=CustomEncoder)) # CustomEncoder due to callables
-        #         self.requestQueue.put(requestQueueEntry)
-        #         if self.requestQueueChangedCallback:
-        #             self.requestQueueChangedCallback(self.requestQueue)
-        #         logging.info('DELETE: setting requestEvent')
-        #         self.requestEvent.set()
-        #         return True # successfully submitted to the queue
-        #     # logging.info("URL:"+str(url))
-        #     # logging.info("Ris:"+str(r))
         else:
             logging.error("sendRequest: Unrecognized request method:"+str(method))
             # self.syncPause=False
