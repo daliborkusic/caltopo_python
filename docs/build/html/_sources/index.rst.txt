@@ -53,7 +53,7 @@ Install this package in the usual manner:
 To activate online requests, you will need to determine your account ID, credential ID, and public key.  See details at the |api_link| and older unofficial details on the :doc:`credentials` page.
 
 **NOTE: caltopo_python was formerly called sartopo_python.**
-caltopo_python 1.0.x will be identical to sartopo_python 2.0.x.  Only caltopo_python will get new versions going forward.
+caltopo_python 1.0.x is identical to sartopo_python 2.0.x.  sartopo_python was end-of-lifed in 2024, and has no equivalent to caltopo_python 2.0.0.  Only caltopo_python will get new versions going forward.
 
 For more information on migrating from sartopo_python to caltopo_python, see the :doc:`migration` page.
 
