@@ -12,6 +12,12 @@
 caltopo_python
 ==========================================
 
+Version 2.0.0 is installable with pip (live on pypi) as of Jan. 17 2026.  The biggest single enhancement is non-blocking request capability, so that applications are more responsive, and can work reliably with intermittent or delayed internet connection.
+
+See |change_log_link| for details.
+
+------------------------------
+
 CalTopo is a very popular web-browser-based and smartphone-app-based mapping tool.  SARTopo is a mostly-obsolete
 name that refers to a set of Search-And-Rescue-specific features inside the CalTopo tool. See |caltopo_link| and |training_link|.
 
@@ -335,6 +341,10 @@ Configuration file
 .. * :ref:`genindex`
 .. * :ref:`modindex`
 .. * :ref:`search`
+
+.. |change_log_link| raw:: html
+
+   <a href="https://github.com/ncssar/caltopo_python/issues/53" target="_blank">the complete change log</a>
 
 .. |caltopo_link| raw:: html
 
