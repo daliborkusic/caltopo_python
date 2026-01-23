@@ -37,9 +37,11 @@ These methods may be called from either a mapless or a map-associated session.
 
 **Feature creation methods**
 ----------------------------
-Most of these feature creation methods can be used to edit an existing feature,
-by specifying the existingId argument.  .editFeature is a convenience method
-that calls the appropriate .add... method with existingId specified.
+In caltopo_python 1.0.0, most of these feature creation methods could be used to edit an existing feature,
+by specifying the existingId argument.  .editFeature was a convenience method
+that called the appropriate .add... method with existingId specified.
+
+In caltopo_python 2.0.0, the potentially-confusing existingId argument has been removed, and .editFeature now does all the work internally.
 
    .. automethod:: CaltopoSession.addFolder
    .. automethod:: CaltopoSession.addMarker
