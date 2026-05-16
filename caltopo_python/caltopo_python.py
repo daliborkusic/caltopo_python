@@ -913,7 +913,7 @@ class CaltopoSession():
                         'title':title,
                         'id':folderInQuestion['id'],
                         'path':folder['path']+'/'+title,
-                        'subFolders':[]                        
+                        'subFolders':[]
                     })
                     # logging.info(prefix+'  '*level+'  match!')
                     return folder # match at this level; return the parent
@@ -923,7 +923,7 @@ class CaltopoSession():
                         return r # recursive return all the way up, when a match is found
             # logging.info(prefix+' '*level+'  no match at this level...')
             return False # no match after walking all folders at this level (could be recursive return)
-        
+
         for account in self.personalAccounts+self.groupAccounts:
             accountDict={}
             accountDict['accountTitle']=account['properties']['title'].rstrip()
@@ -980,6 +980,103 @@ class CaltopoSession():
             accountDict['pathsAndIds']=pathsAndIds
             aaf.append(accountDict)
         return aaf
+
+    def getFolderLists(self, groupAccountTitle: str='', refresh=False) -> list:
+        """Get a list of all folders in the user's personal account, or in the specified group account.
+
+        :param groupAccountTitle: Title of the group account to get the folder list from; defaults to '', in which case only the personal folder list is returned
+        :type groupAccountTitle: str, optional
+        :param refresh: If True, a refresh will be performed before getting the folder list; defaults to False
+        :type refresh: bool, optional
+        :return: List of dicts, containing folder information: \n
+                 *id* -> folder ID \n
+                 *title* -> folder title \n
+                 *parentFolderId* -> ID of the parent folder (if any) \n
+        :rtype: list
+        """
+        if refresh or not self.accountData:
+            self.getAccountData()
+        folderLists = []
+        rval = []
+        if groupAccountTitle:
+            groupAccountIds = [x['id'] for x in self.groupAccounts if x['properties']['title'] == groupAccountTitle]
+            if type(groupAccountIds) == list:
+                if len(groupAccountIds) == 0:
+                    logging.warning('attempt to get folder list for group account "' + groupAccountTitle + '", but the signed-in user is not a member of that group account; returning an empty folder list.')
+                    return []
+                elif len(groupAccountIds) > 1:
+                    logging.warning('the signed-in user is a member of more than one group account with the requested name "' + groupAccountTitle + '"; returning an empty list.')
+                    return []
+            else:
+                logging.warning('groupAccountIds was not a list; returning an empty list.')
+                return []
+            gid = groupAccountIds[0]
+            folders = [f for f in self.accountData['features']
+                    if 'properties' in f.keys()
+                    and f['properties'].get('class', '') == 'UserFolder'
+                    and f['properties'].get('accountId', '') == gid]
+            folderLists.append({'id': gid, 'title': groupAccountTitle, 'folders': folders})
+        else:  # personal folders; allow for the possibility of multiple personal accounts
+            if len(self.personalAccounts) > 1:
+                logging.info('The currently-signed-in user has more than one personal account; the return value will be a netsted list.')
+            for personalAccount in self.personalAccounts:
+                pid = personalAccount['id']
+                folders = [f for f in self.accountData['features']
+                        if 'properties' in f.keys()
+                        and f['properties'].get('class', '') == 'UserFolder'
+                        and f['properties'].get('accountId', '') == pid]
+                folderLists.append({'id': pid, 'title': [x['properties']['title'] for x in self.accountData['accounts'] if x['id'] == pid][0], 'folders': folders})
+
+        for folderList in folderLists:
+            theList = []
+            for folder in folderList['folders']:
+                fp = folder['properties']
+                fd = {
+                    'id': folder['id'],
+                    'title': fp['title'],
+                    'parentFolderId': fp.get('folderId')
+                }
+                if fd not in theList:
+                    theList.append(fd)
+
+            # if there's only one folder list, return it as one list; otherwise return a nested list
+            if len(theList) > 0:
+                rval.append(theList)
+
+        if len(rval) == 1:
+            rval = rval[0]
+        return rval
+
+    def getAllFolderLists(self, includePersonal=False, refresh=False) -> list:
+        """Get a structured list of folders from all group accounts of which the current user is a member. Optionally include the user's personal account(s).
+
+        :param includePersonal: If True, the user's personal account(s) will be included in the return value; defaults to False
+        :type includePersonal: bool, optional
+        :param refresh: If True, a refresh will be performed before getting the folder lists; defaults to False
+        :type refresh: bool, optional
+        :return: list of dicts: \n
+                *groupAccountTitle* -> title of the group account \n
+                  -OR- \n
+                *personalAccountTitle* -> title of the personal account \n
+                *folderList* -> list of folders for this group account, in the same format as the return value from .getFolderLists
+        :rtype: list
+        """
+        if refresh or not self.accountData:
+            self.getAccountData()
+        theList = []
+        if includePersonal:
+            personalRval = self.getFolderLists(refresh=False)
+            if isinstance(personalRval, list) and (not personalRval or isinstance(personalRval[0], dict)): # not nested; a list of dicts
+                theList.append({'personalAccountTitle': self.personalAccounts[0]['properties']['title'], 'folderList': personalRval})
+            else: # nested; multiple personal accounts; a list of lists dicts
+                n = 0 # index to self.personalAccounts; this assumes the sequence will be the same
+                for personalAcct in personalRval:
+                    theList.append({'personalAccountTitle': self.personalAccounts[n]['properties']['title'], 'folderList': personalAcct})
+                    n += 1
+        for gat in [x['properties']['title'] for x in self.groupAccounts]:
+            folderList = self.getFolderLists(gat, refresh=False)
+            theList.append({'groupAccountTitle': gat, 'folderList': folderList})
+        return theList
 
     def getGroupAccountTitles(self,
             refresh=False) -> list:
@@ -4657,7 +4754,44 @@ class CaltopoSession():
             self.delFeature(boundaryShape['id'],fClass=boundaryShape['properties']['class'])
 
         return rids # resulting feature IDs
-
+        
+    def getLiveLocations(self, lat_min=42, lon_min=13, lat_max=47, lon_max=20):
+        """Fetch live locations within a specified bounding box.
+        
+        :param lat_min: Minimum latitude (southern bound)
+        :type lat_min: float, optional
+        :param lon_min: Minimum longitude (western bound)
+        :type lon_min: float, optional
+        :param lat_max: Maximum latitude (northern bound)
+        :type lat_max: float, optional
+        :param lon_max: Maximum longitude (eastern bound)
+        :type lon_max: float, optional
+        :return: Live location data or False if request fails
+        :rtype: dict or bool
+        """
+        # if not self.mapID or self.apiVersion < 0:
+        #     logging.error('getLiveLocations request invalid: this caltopo session is not associated with a map.')
+        #     return False
+            
+        # Create bounding box array
+        bbox = [lat_min, lon_min, lat_max, lon_max]
+        
+        # Create payload with URL-encoded json parameter
+        json_payload = json.dumps({"bbox": bbox})
+        encoded_payload = {"json": json_payload}
+        
+        # Send POST request to the geodata/locations endpoint
+        response = self._sendRequest("post", "api/v1/geodata/locations", encoded_payload)
+        
+        if not response:
+            logging.warning("Failed to fetch live locations")
+            return False
+            
+        # Store locations in the class attribute
+        self.locations = response
+        
+        return response
+        
         
 def insertBeforeExt(fn,ins): 
     if '.' in fn:
