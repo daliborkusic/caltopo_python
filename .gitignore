@@ -1,6 +1,9 @@
 __pycache__/
 *.pyc
 *.swp
+*.egg-info/
+build/
+dist/
 map.json
 accountData.txt
 accountData_ncssaradm.txt

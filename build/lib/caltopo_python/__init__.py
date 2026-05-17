@@ -1,1 +1,0 @@
-from caltopo_python.caltopo_python import CaltopoSession
