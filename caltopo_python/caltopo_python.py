@@ -925,7 +925,7 @@ class CaltopoSession():
         
         for account in self.personalAccounts+self.groupAccounts:
             accountDict={}
-            accountDict['accountTitle']=account['properties']['title'].rstrip()
+            accountDict['accountTitle']=account['properties'].get('title', account['properties'].get('lastName', account['id'])).rstrip()
             accountDict['accountId']=account['id']
             rootFolders=[]
             pathsAndIds=[]
